@@ -8,7 +8,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -27,6 +29,14 @@ public final class YamlGroupRepository implements GroupRepository {
     private final TaskScheduler scheduler;
     private final Object lock = new Object();
 
+    /**
+     * Each group's file, lazily parsed once and reused for every subsequent read/write — this
+     * repository is the sole writer of these files, so re-parsing one from disk before every
+     * single save would be wasted I/O; only the final {@code config.save(...)} needs disk.
+     * Access only ever happens from within {@link #lock}, so a plain map is safe here.
+     */
+    private final Map<String, YamlConfiguration> configs = new HashMap<>();
+
     public YamlGroupRepository(File dataFolder, TaskScheduler scheduler) {
         this.groupsDirectory = new File(dataFolder, "groups");
         if (!groupsDirectory.exists() && !groupsDirectory.mkdirs()) {
@@ -38,11 +48,10 @@ public final class YamlGroupRepository implements GroupRepository {
     @Override
     public CompletableFuture<Void> save(Group group) {
         return runAsync(() -> {
-            File file = fileFor(group.getName());
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-            config.set("id", group.getName());
-            config.set("permission", group.getPermission());
-            config.save(file);
+            YamlConfiguration cfg = configurationFor(group.getName());
+            cfg.set("id", group.getName());
+            cfg.set("permission", group.getPermission());
+            cfg.save(fileFor(group.getName()));
             return null;
         });
     }
@@ -55,6 +64,7 @@ public final class YamlGroupRepository implements GroupRepository {
             if (existed && !file.delete()) {
                 throw new IOException("Could not delete group file: " + file);
             }
+            configs.remove(name);
             return existed;
         });
     }
@@ -76,13 +86,12 @@ public final class YamlGroupRepository implements GroupRepository {
     @Override
     public void saveWarpEntry(String groupName, GroupedWarp warp, Consumer<Boolean> callback) {
         runAsync(() -> {
-            File file = fileFor(groupName);
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-            ConfigurationSection section = config.createSection(WARPS_KEY + "." + warp.getName());
+            YamlConfiguration cfg = configurationFor(groupName);
+            ConfigurationSection section = cfg.createSection(WARPS_KEY + "." + warp.getName());
             YamlLocationCodec.write(section, warp.getLocation());
             section.set("creator", warp.getCreator().toString());
             section.set("created-at", warp.getCreatedAt());
-            config.save(file);
+            cfg.save(fileFor(groupName));
             return true;
         }, callback, throwable -> callback.accept(false));
     }
@@ -90,21 +99,21 @@ public final class YamlGroupRepository implements GroupRepository {
     @Override
     public void removeWarpEntry(String groupName, String warpName, Consumer<Boolean> callback) {
         runAsync(() -> {
-            File file = fileFor(groupName);
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-            ConfigurationSection warps = config.getConfigurationSection(WARPS_KEY);
+            YamlConfiguration cfg = configurationFor(groupName);
+            ConfigurationSection warps = cfg.getConfigurationSection(WARPS_KEY);
             boolean existed = warps != null && warps.isConfigurationSection(warpName);
             if (existed) {
                 warps.set(warpName, null);
-                config.save(file);
+                cfg.save(fileFor(groupName));
             }
             return existed;
         }, callback, throwable -> callback.accept(false));
     }
 
     private GroupData readGroupData(File file) throws IOException {
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-        String id = config.getString("id", stripExtension(file.getName()));
+        String name = stripExtension(file.getName());
+        YamlConfiguration config = configurationFor(name);
+        String id = config.getString("id", name);
         Group group = new Group(id, config.getString("permission"));
 
         List<GroupedWarp> warps = new ArrayList<>();
@@ -124,6 +133,11 @@ public final class YamlGroupRepository implements GroupRepository {
             }
         }
         return new GroupData(group, warps);
+    }
+
+    /** Called only from within {@link #lock}, so lazy init needs no extra synchronization. */
+    private YamlConfiguration configurationFor(String groupName) {
+        return configs.computeIfAbsent(groupName, name -> YamlConfiguration.loadConfiguration(fileFor(name)));
     }
 
     private File fileFor(String groupName) {

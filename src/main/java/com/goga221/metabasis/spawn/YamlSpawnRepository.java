@@ -20,6 +20,13 @@ public final class YamlSpawnRepository implements SpawnRepository {
     private final TaskScheduler scheduler;
     private final Object lock = new Object();
 
+    /**
+     * Lazily loaded once, then reused for every subsequent read/write — this repository is the
+     * sole writer of spawns.yml, so re-parsing it from disk before every single save would be
+     * wasted I/O; only the final {@code config.save(...)} actually needs to touch disk.
+     */
+    private YamlConfiguration config;
+
     public YamlSpawnRepository(File dataFolder, TaskScheduler scheduler) {
         if (!dataFolder.exists() && !dataFolder.mkdirs()) {
             throw new IllegalStateException("Could not create plugin data folder: " + dataFolder);
@@ -31,12 +38,12 @@ public final class YamlSpawnRepository implements SpawnRepository {
     @Override
     public CompletableFuture<Void> save(Spawn spawn) {
         return runAsync(() -> {
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(spawnsFile);
-            ConfigurationSection section = config.createSection(ROOT_KEY + "." + spawn.getWorldName());
+            YamlConfiguration cfg = configuration();
+            ConfigurationSection section = cfg.createSection(ROOT_KEY + "." + spawn.getWorldName());
             YamlLocationCodec.write(section, spawn.getLocation());
             section.set("set-by", spawn.getSetBy().toString());
             section.set("updated-at", spawn.getUpdatedAt());
-            config.save(spawnsFile);
+            cfg.save(spawnsFile);
             return null;
         });
     }
@@ -45,8 +52,8 @@ public final class YamlSpawnRepository implements SpawnRepository {
     public CompletableFuture<List<Spawn>> loadAll() {
         return runAsync(() -> {
             List<Spawn> spawns = new ArrayList<>();
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(spawnsFile);
-            ConfigurationSection section = config.getConfigurationSection(ROOT_KEY);
+            YamlConfiguration cfg = configuration();
+            ConfigurationSection section = cfg.getConfigurationSection(ROOT_KEY);
             if (section != null) {
                 for (String worldName : section.getKeys(false)) {
                     ConfigurationSection spawnSection = section.getConfigurationSection(worldName);
@@ -63,6 +70,14 @@ public final class YamlSpawnRepository implements SpawnRepository {
             }
             return spawns;
         });
+    }
+
+    /** Called only from within the {@link #lock}, so lazy init needs no extra synchronization. */
+    private YamlConfiguration configuration() {
+        if (config == null) {
+            config = YamlConfiguration.loadConfiguration(spawnsFile);
+        }
+        return config;
     }
 
     private <T> CompletableFuture<T> runAsync(IOAction<T> action) {

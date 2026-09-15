@@ -20,6 +20,13 @@ public final class YamlWarpRepository implements WarpRepository {
     private final TaskScheduler scheduler;
     private final Object lock = new Object();
 
+    /**
+     * Lazily loaded once, then reused for every subsequent read/write — this repository is the
+     * sole writer of warps.yml, so re-parsing it from disk before every single save/delete would
+     * be wasted I/O; only the final {@code config.save(...)} actually needs to touch disk.
+     */
+    private YamlConfiguration config;
+
     public YamlWarpRepository(File dataFolder, TaskScheduler scheduler) {
         if (!dataFolder.exists() && !dataFolder.mkdirs()) {
             throw new IllegalStateException("Could not create plugin data folder: " + dataFolder);
@@ -31,15 +38,15 @@ public final class YamlWarpRepository implements WarpRepository {
     @Override
     public void save(Warp warp, Consumer<Boolean> callback) {
         runAsync(() -> {
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(warpsFile);
-            ConfigurationSection section = config.createSection(ROOT_KEY + "." + warp.getName());
+            YamlConfiguration cfg = configuration();
+            ConfigurationSection section = cfg.createSection(ROOT_KEY + "." + warp.getName());
             YamlLocationCodec.write(section, warp.getLocation());
             section.set("creator", warp.getCreator().toString());
             section.set("created-at", warp.getCreatedAt());
             if (warp.getGroupName() != null) {
                 section.set("group", warp.getGroupName());
             }
-            config.save(warpsFile);
+            cfg.save(warpsFile);
             return true;
         }, callback, throwable -> callback.accept(false));
     }
@@ -47,12 +54,12 @@ public final class YamlWarpRepository implements WarpRepository {
     @Override
     public void delete(String name, Consumer<Boolean> callback) {
         runAsync(() -> {
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(warpsFile);
-            ConfigurationSection warps = config.getConfigurationSection(ROOT_KEY);
+            YamlConfiguration cfg = configuration();
+            ConfigurationSection warps = cfg.getConfigurationSection(ROOT_KEY);
             boolean existed = warps != null && warps.isConfigurationSection(name);
             if (existed) {
                 warps.set(name, null);
-                config.save(warpsFile);
+                cfg.save(warpsFile);
             }
             return existed;
         }, callback, throwable -> callback.accept(false));
@@ -62,8 +69,8 @@ public final class YamlWarpRepository implements WarpRepository {
     public void loadAll(Consumer<List<Warp>> onLoaded, Consumer<Throwable> onError) {
         runAsync(() -> {
             List<Warp> warps = new ArrayList<>();
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(warpsFile);
-            ConfigurationSection section = config.getConfigurationSection(ROOT_KEY);
+            YamlConfiguration cfg = configuration();
+            ConfigurationSection section = cfg.getConfigurationSection(ROOT_KEY);
             if (section != null) {
                 for (String name : section.getKeys(false)) {
                     ConfigurationSection warpSection = section.getConfigurationSection(name);
@@ -81,6 +88,14 @@ public final class YamlWarpRepository implements WarpRepository {
             }
             return warps;
         }, onLoaded, onError);
+    }
+
+    /** Called only from within the {@link #lock}, so lazy init needs no extra synchronization. */
+    private YamlConfiguration configuration() {
+        if (config == null) {
+            config = YamlConfiguration.loadConfiguration(warpsFile);
+        }
+        return config;
     }
 
     /** Runs a YAML read/write action asynchronously, serialized against concurrent file access. */

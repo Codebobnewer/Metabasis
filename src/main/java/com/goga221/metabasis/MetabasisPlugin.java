@@ -6,6 +6,7 @@ import com.goga221.metabasis.command.WarpCommand;
 import com.goga221.metabasis.group.GroupRepository;
 import com.goga221.metabasis.group.GroupService;
 import com.goga221.metabasis.group.YamlGroupRepository;
+import com.goga221.metabasis.listener.SpawnRespawnListener;
 import com.goga221.metabasis.spawn.SpawnRepository;
 import com.goga221.metabasis.spawn.SpawnService;
 import com.goga221.metabasis.spawn.YamlSpawnRepository;
@@ -60,6 +61,8 @@ public final class MetabasisPlugin extends JavaPlugin {
         new WarpCommand(warpService, groupService).register(this);
         new SpawnCommand(spawnService).register(this);
         new GroupCommand(groupService, warpService).register(this);
+
+        getServer().getPluginManager().registerEvents(new SpawnRespawnListener(spawnService), this);
     }
 
     @Override
