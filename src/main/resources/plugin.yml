@@ -1,0 +1,13 @@
+name: FoliaWarps
+version: '${project.version}'
+main: com.goga221.foliawarps.FoliaWarpsPlugin
+api-version: '1.21'
+folia-supported: true
+author: goga221
+description: Create warp points and teleport to them.
+depend: [CommandAPI]
+
+permissions:
+  foliawarps.admin:
+    description: Allows creating and deleting warp points.
+    default: op
