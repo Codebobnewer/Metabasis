@@ -1,0 +1,86 @@
+# Metabasis message configuration.
+#
+# Every key here mirrors what the plugin looks up internally (e.g. warp.set.success). You only
+# need to include the keys you actually want to change — anything missing falls back to the
+# plugin's built-in default, so it's safe to trim this file down to just your overrides.
+#
+# Supports MiniMessage formatting: https://docs.advntr.dev/minimessage/format.html
+# Placeholders available for each message are shown as <placeholder> in its default text below.
+
+error:
+  generic: "<red><message></red>"
+
+warp:
+  not-found: "<red>No warp named <white><name></white> exists.</red>"
+  no-permission: "<red>You don't have permission to warp to <white><name></white>.</red>"
+  set:
+    success: "<green>Warp <white><name></white> created.</green>"
+    failed: "<red>Failed to save warp <white><name></white>.</red>"
+  delete:
+    success: "<green>Warp <white><name></white> deleted.</green>"
+  group:
+    cleared: "<green>Warp <white><name></white> is now public.</green>"
+    assigned: "<green>Warp <white><name></white> assigned to group <white><group></white>.</green>"
+  update:
+    failed: "<red>Failed to update warp <white><name></white>.</red>"
+  enable:
+    success: "<green>Warp <white><name></white> enabled.</green>"
+  disable:
+    success: "<yellow>Warp <white><name></white> disabled.</yellow>"
+  massport:
+    summary: "<green>Mass-warped <white><teleported></white>/<white><total></white> player(s) to <white><name></white> (<white><skipped></white> skipped due to missing permission).</green>"
+  list:
+    empty: "<yellow>There are no warps yet.</yellow>"
+    header: "<gold>Warps:</gold> "
+  teleport:
+    success: "<green>Teleported to <white><name></white>.</green>"
+    failed: "<red>Teleportation to <white><name></white> failed. The world may not be loaded.</red>"
+  fade:
+    title: "<gold><name></gold>"
+    subtitle: ""
+    success: "<green>Fade settings for <white><name></white> updated.</green>"
+  warmup:
+    starting: "<yellow>Warping to <white><name></white> in <white><seconds></white> second(s)... don't move!</yellow>"
+    cancelled: "<red>Warp cancelled — you moved or took damage.</red>"
+    set:
+      success: "<green>Warmup for <white><name></white> set to <white><seconds></white> second(s).</green>"
+  history:
+    empty: "<yellow>No recorded history for <white><name></white>.</yellow>"
+    header: "<gold>History for <white><name></white>:</gold>"
+    entry: "<gray>[<white><time></white>] <white><type></white> by <white><actor></white></gray>"
+    failed: "<red>Failed to load history for <white><name></white>.</red>"
+
+group:
+  not-found: "<red>No group named <white><name></white> exists.</red>"
+  create:
+    success: "<green>Group <white><name></white> created.</green>"
+    failed: "<red>Failed to create group <white><name></white>.</red>"
+  delete:
+    success: "<green>Group <white><name></white> deleted, along with every warp assigned to it.</green>"
+  permission:
+    success: "<green>Group <white><name></white> permission updated.</green>"
+  describe:
+    success: "<green>Group <white><name></white> description updated.</green>"
+  enable:
+    success: "<green>Group <white><name></white> enabled.</green>"
+  disable:
+    success: "<yellow>Group <white><name></white> disabled; its warps are inaccessible until re-enabled.</yellow>"
+  update:
+    failed: "<red>Failed to update group <white><name></white>.</red>"
+  list:
+    empty: "<yellow>There are no groups yet.</yellow>"
+    header: "<gold>Groups:</gold> "
+
+spawn:
+  world-not-found: "<red>No world named <white><name></white> is loaded.</red>"
+  no-permission: "<red>You don't have permission to warp to <white><name></white>'s spawn.</red>"
+  set:
+    success: "<green>Spawn for <white><name></white> set to your current location.</green>"
+    failed: "<red>Failed to save spawn for <white><name></white>.</red>"
+  permission:
+    success: "<green>Spawn permission for <white><name></white> updated.</green>"
+    failed: "<red>Failed to update spawn permission for <white><name></white>.</red>"
+  teleport:
+    custom: "<green>Teleported to <white><name></white>'s spawn.</green>"
+    default: "<green>Teleported to <white><name></white>'s default spawn (no custom spawn set).</green>"
+    failed: "<red>Teleportation to <white><name></white>'s spawn failed.</red>"
