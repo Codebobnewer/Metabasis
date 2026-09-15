@@ -1,4 +1,4 @@
-package com.goga221.foliawarps.util;
+package com.goga221.metabasis.util;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -19,5 +19,10 @@ public final class Messages {
     /** Wraps untrusted text (e.g. a player-chosen warp name) as plain text, not MiniMessage markup. */
     public static TagResolver name(String value) {
         return Placeholder.unparsed("name", value);
+    }
+
+    /** Wraps untrusted text (e.g. a player-chosen group name) as plain text, not MiniMessage markup. */
+    public static TagResolver group(String value) {
+        return Placeholder.unparsed("group", value);
     }
 }

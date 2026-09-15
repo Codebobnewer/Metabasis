@@ -5,12 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.goga221</groupId>
-    <artifactId>foliawarps</artifactId>
+    <artifactId>metabasis</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>FoliaWarps</name>
-    <description>Folia/Paper compatible warp point plugin.</description>
+    <name>Metabasis</name>
+    <description>Folia/Paper compatible plugin for per-world spawns, warp points, and permission-gated warp groups.</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -20,8 +20,9 @@
         <commandapi.version>12.0.0</commandapi.version>
         <universalscheduler.version>0.1.7</universalscheduler.version>
         <lombok.version>1.18.36</lombok.version>
+        <luckperms.version>5.4</luckperms.version>
 
-        <shade.base>com.goga221.foliawarps.libs</shade.base>
+        <shade.base>com.goga221.metabasis.libs</shade.base>
     </properties>
 
     <repositories>
@@ -64,6 +65,14 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Queried to validate/enumerate LuckPerms groups; provided by the standalone LuckPerms plugin on the server, if installed -->
+        <dependency>
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>${luckperms.version}</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

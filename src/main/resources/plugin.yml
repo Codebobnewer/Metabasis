@@ -1,13 +1,14 @@
-name: FoliaWarps
+name: Metabasis
 version: '${project.version}'
-main: com.goga221.foliawarps.FoliaWarpsPlugin
+main: com.goga221.metabasis.MetabasisPlugin
 api-version: '1.21'
 folia-supported: true
 author: goga221
-description: Create warp points and teleport to them.
+description: Per-world spawns, warp points, and permission-gated warp groups.
 depend: [CommandAPI]
+softdepend: [LuckPerms]
 
 permissions:
-  foliawarps.admin:
-    description: Allows creating and deleting warp points.
+  metabasis.admin:
+    description: Grants access to all Metabasis admin commands (warp set/delete/group-assign, group create/delete/permission/list, spawn set).
     default: op

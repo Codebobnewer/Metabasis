@@ -1,5 +1,6 @@
-package com.goga221.foliawarps.warp;
+package com.goga221.metabasis.warp;
 
+import com.goga221.metabasis.location.YamlLocationCodec;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -9,7 +10,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 public final class YamlWarpRepository implements WarpRepository {
 
@@ -28,26 +29,24 @@ public final class YamlWarpRepository implements WarpRepository {
     }
 
     @Override
-    public CompletableFuture<Void> save(Warp warp) {
-        return runAsync(() -> {
+    public void save(Warp warp, Consumer<Boolean> callback) {
+        runAsync(() -> {
             YamlConfiguration config = YamlConfiguration.loadConfiguration(warpsFile);
             ConfigurationSection section = config.createSection(ROOT_KEY + "." + warp.getName());
-            section.set("world", warp.getWorldName());
-            section.set("x", warp.getX());
-            section.set("y", warp.getY());
-            section.set("z", warp.getZ());
-            section.set("yaw", warp.getYaw());
-            section.set("pitch", warp.getPitch());
+            YamlLocationCodec.write(section, warp.getLocation());
             section.set("creator", warp.getCreator().toString());
             section.set("created-at", warp.getCreatedAt());
+            if (warp.getGroupName() != null) {
+                section.set("group", warp.getGroupName());
+            }
             config.save(warpsFile);
-            return null;
-        });
+            return true;
+        }, callback, throwable -> callback.accept(false));
     }
 
     @Override
-    public CompletableFuture<Boolean> delete(String name) {
-        return runAsync(() -> {
+    public void delete(String name, Consumer<Boolean> callback) {
+        runAsync(() -> {
             YamlConfiguration config = YamlConfiguration.loadConfiguration(warpsFile);
             ConfigurationSection warps = config.getConfigurationSection(ROOT_KEY);
             boolean existed = warps != null && warps.isConfigurationSection(name);
@@ -56,12 +55,12 @@ public final class YamlWarpRepository implements WarpRepository {
                 config.save(warpsFile);
             }
             return existed;
-        });
+        }, callback, throwable -> callback.accept(false));
     }
 
     @Override
-    public CompletableFuture<List<Warp>> loadAll() {
-        return runAsync(() -> {
+    public void loadAll(Consumer<List<Warp>> onLoaded, Consumer<Throwable> onError) {
+        runAsync(() -> {
             List<Warp> warps = new ArrayList<>();
             YamlConfiguration config = YamlConfiguration.loadConfiguration(warpsFile);
             ConfigurationSection section = config.getConfigurationSection(ROOT_KEY);
@@ -73,34 +72,28 @@ public final class YamlWarpRepository implements WarpRepository {
                     }
                     warps.add(new Warp(
                             name,
-                            warpSection.getString("world"),
-                            warpSection.getDouble("x"),
-                            warpSection.getDouble("y"),
-                            warpSection.getDouble("z"),
-                            (float) warpSection.getDouble("yaw"),
-                            (float) warpSection.getDouble("pitch"),
+                            YamlLocationCodec.read(warpSection),
                             UUID.fromString(warpSection.getString("creator")),
-                            warpSection.getLong("created-at")
+                            warpSection.getLong("created-at"),
+                            warpSection.getString("group")
                     ));
                 }
             }
             return warps;
-        });
+        }, onLoaded, onError);
     }
 
     /** Runs a YAML read/write action asynchronously, serialized against concurrent file access. */
-    private <T> CompletableFuture<T> runAsync(IOAction<T> action) {
-        CompletableFuture<T> future = new CompletableFuture<>();
+    private <T> void runAsync(IOAction<T> action, Consumer<T> onDone, Consumer<Throwable> onError) {
         scheduler.runTaskAsynchronously(() -> {
             synchronized (lock) {
                 try {
-                    future.complete(action.run());
+                    onDone.accept(action.run());
                 } catch (IOException e) {
-                    future.completeExceptionally(e);
+                    onError.accept(e);
                 }
             }
         });
-        return future;
     }
 
     @FunctionalInterface
