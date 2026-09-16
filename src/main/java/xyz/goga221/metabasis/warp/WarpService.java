@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 public final class WarpService {
 
     /** Names that collide with /warp's own subcommand literals and can't be used for a warp. */
-    public static final Set<String> RESERVED_NAMES = Set.of("set", "del", "list", "group", "massport", "enable", "disable", "fade", "warmup", "history", "gui", "admin");
+    public static final Set<String> RESERVED_NAMES = Set.of("create", "move", "del", "list", "group", "massport", "enable", "disable", "fade", "warmup", "history", "gui", "admin");
 
     /** Ticks per second, for converting warp fade/warmup durations to scheduler delays. */
     private static final long TICKS_PER_SECOND = 20L;

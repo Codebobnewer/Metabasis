@@ -11,12 +11,16 @@ import xyz.goga221.metabasis.util.Messages;
 import xyz.goga221.metabasis.util.MessageService;
 import xyz.goga221.metabasis.util.Permissions;
 import xyz.goga221.metabasis.warp.Warp;
+import xyz.goga221.metabasis.warp.WarpFilter;
 import xyz.goga221.metabasis.warp.WarpService;
 import dev.jorel.commandapi.CommandTree;
 import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.jorel.commandapi.arguments.IntegerArgument;
 import dev.jorel.commandapi.arguments.LiteralArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -24,10 +28,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class WarpCommand {
@@ -35,6 +39,7 @@ public final class WarpCommand {
     private static final String NONE_GROUP_TOKEN = "none";
     private static final String OVERRIDE_TOKEN = "override";
     private static final int DEFAULT_HISTORY_COUNT = 10;
+    private static final int LIST_PAGE_SIZE = 8;
     private static final DateTimeFormatter HISTORY_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneOffset.UTC);
 
     private final WarpService warpService;
@@ -53,12 +58,20 @@ public final class WarpCommand {
 
     public void register(JavaPlugin plugin) {
         new CommandTree("warp")
-                .then(new LiteralArgument("set")
+                .then(new LiteralArgument("create")
                         .withRequirement(sender -> Permissions.check(sender, Permissions.ADMIN))
                         .then(new StringArgument("name")
                                 .executesPlayer((player, args) -> {
                                     String name = (String) args.getUnchecked("name");
-                                    handleSet(player, name);
+                                    handleCreate(player, name);
+                                })))
+                .then(new LiteralArgument("move")
+                        .withRequirement(sender -> Permissions.check(sender, Permissions.ADMIN))
+                        .then(new StringArgument("name")
+                                .replaceSuggestions(ArgumentSuggestions.strings(info -> warpNames()))
+                                .executesPlayer((player, args) -> {
+                                    String name = (String) args.getUnchecked("name");
+                                    handleMove(player, name);
                                 })))
                 .then(new LiteralArgument("del")
                         .withRequirement(sender -> Permissions.check(sender, Permissions.ADMIN))
@@ -157,8 +170,26 @@ public final class WarpCommand {
                                         }))))
                 .then(new LiteralArgument("list")
                         .executesPlayer((player, args) -> {
-                            handleList(player);
-                        }))
+                            handleList(player, null, 1);
+                        })
+                        .then(new IntegerArgument("page", 1)
+                                .executesPlayer((player, args) -> {
+                                    int page = (int) args.getUnchecked("page");
+                                    handleList(player, null, page);
+                                }))
+                        .then(new LiteralArgument("group")
+                                .then(new StringArgument("groupName")
+                                        .replaceSuggestions(ArgumentSuggestions.strings(info -> listGroupSuggestions()))
+                                        .executesPlayer((player, args) -> {
+                                            String groupName = (String) args.getUnchecked("groupName");
+                                            handleList(player, groupName, 1);
+                                        })
+                                        .then(new IntegerArgument("page", 1)
+                                                .executesPlayer((player, args) -> {
+                                                    String groupName = (String) args.getUnchecked("groupName");
+                                                    int page = (int) args.getUnchecked("page");
+                                                    handleList(player, groupName, page);
+                                                })))))
                 .then(new StringArgument("name")
                         .replaceSuggestions(ArgumentSuggestions.strings(info -> warpNames()))
                         .executesPlayer((player, args) -> {
@@ -181,14 +212,46 @@ public final class WarpCommand {
                 .toArray(String[]::new);
     }
 
-    private void handleSet(Player player, String rawName) {
+    private String[] listGroupSuggestions() {
+        return Stream.concat(Stream.of(WarpFilter.PUBLIC_TOKEN), groupService.getAll().stream().map(Group::getName))
+                .toArray(String[]::new);
+    }
+
+    /** Only ever creates a brand-new warp — refuses if the name is already taken, unlike {@link #handleMove}. */
+    private void handleCreate(Player player, String rawName) {
         String name = WarpService.normalize(rawName);
+        if (warpService.get(name).isPresent()) {
+            messages.send(player, "warp.create.exists", Messages.name(name));
+            return;
+        }
+
         try {
             warpService.createWarp(rawName, player.getLocation(), player.getUniqueId(), saved -> {
                 if (saved) {
-                    messages.send(player, "warp.set.success", Messages.name(name));
+                    messages.send(player, "warp.create.success", Messages.name(name));
                 } else {
-                    messages.send(player, "warp.set.failed", Messages.name(name));
+                    messages.send(player, "warp.create.failed", Messages.name(name));
+                }
+            });
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            messages.send(player, "error.generic", Messages.message(e.getMessage()));
+        }
+    }
+
+    /** Only ever relocates an existing warp — refuses if the name doesn't exist yet, unlike {@link #handleCreate}. */
+    private void handleMove(Player player, String rawName) {
+        String name = WarpService.normalize(rawName);
+        if (warpService.get(name).isEmpty()) {
+            messages.send(player, "warp.not-found", Messages.name(name));
+            return;
+        }
+
+        try {
+            warpService.createWarp(rawName, player.getLocation(), player.getUniqueId(), saved -> {
+                if (saved) {
+                    messages.send(player, "warp.move.success", Messages.name(name));
+                } else {
+                    messages.send(player, "warp.move.failed", Messages.name(name));
                 }
             });
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -333,28 +396,47 @@ public final class WarpCommand {
                 Messages.of("skipped", String.valueOf(skipped)));
     }
 
-    private void handleList(Player player) {
-        if (warpService.getAll().isEmpty()) {
+    private void handleList(Player player, String groupFilter, int page) {
+        Collection<Warp> all = warpService.getAll();
+        if (all.isEmpty()) {
             messages.send(player, "warp.list.empty");
             return;
         }
 
-        String names = warpService.getAll().stream()
-                .sorted(Comparator.comparing(Warp::getName))
-                .map(this::describeWarp)
-                .collect(Collectors.joining("<gray>, </gray>"));
-        Messages.send(player, messages.get("warp.list.header") + names);
-    }
+        List<Warp> filtered = WarpFilter.sorted(all, groupFilter);
+        if (filtered.isEmpty()) {
+            messages.send(player, "warp.list.filter-empty", Messages.name(groupFilter));
+            return;
+        }
 
-    private String describeWarp(Warp warp) {
-        StringBuilder builder = new StringBuilder(warp.getName());
-        if (warp.getGroupName() != null) {
-            builder.append(" <gray>(").append(warp.getGroupName()).append(")</gray>");
+        int totalPages = Math.max(1, (filtered.size() + LIST_PAGE_SIZE - 1) / LIST_PAGE_SIZE);
+        if (page < 1 || page > totalPages) {
+            messages.send(player, "warp.list.invalid-page",
+                    Messages.of("page", String.valueOf(page)),
+                    Messages.of("pages", String.valueOf(totalPages)));
+            return;
         }
-        if (!warp.isEnabled()) {
-            builder.append(" <red>[disabled]</red>");
+
+        messages.send(player, "warp.list.page-header",
+                Messages.of("page", String.valueOf(page)),
+                Messages.of("pages", String.valueOf(totalPages)));
+
+        int fromIndex = (page - 1) * LIST_PAGE_SIZE;
+        int toIndex = Math.min(filtered.size(), fromIndex + LIST_PAGE_SIZE);
+        String lastGroup = null;
+        for (Warp warp : filtered.subList(fromIndex, toIndex)) {
+            String group = WarpFilter.groupLabel(warp);
+            if (!group.equals(lastGroup)) {
+                messages.send(player, "warp.list.group-header", Messages.group(group));
+                lastGroup = group;
+            }
+            Component suffix = warp.isEnabled() ? Component.empty() : Component.text(" [disabled]", NamedTextColor.RED);
+            messages.send(player, "warp.list.entry", Messages.name(warp.getName()), Placeholder.component("suffix", suffix));
         }
-        return builder.toString();
+
+        if (totalPages > 1) {
+            messages.send(player, "warp.list.footer");
+        }
     }
 
     private void handleTeleport(Player player, String rawName) {

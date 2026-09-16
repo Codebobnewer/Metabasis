@@ -1,6 +1,6 @@
 # Metabasis message configuration.
 #
-# Every key here mirrors what the plugin looks up internally (e.g. warp.set.success). You only
+# Every key here mirrors what the plugin looks up internally (e.g. warp.create.success). You only
 # need to include the keys you actually want to change — anything missing falls back to the
 # plugin's built-in default, so it's safe to trim this file down to just your overrides.
 #
@@ -13,9 +13,13 @@ error:
 warp:
   not-found: "<red>No warp named <white><name></white> exists.</red>"
   no-permission: "<red>You don't have permission to warp to <white><name></white>.</red>"
-  set:
+  create:
+    exists: "<red>A warp named <white><name></white> already exists. Use <white>/warp move <name></white> to relocate it, or pick a different name.</red>"
     success: "<green>Warp <white><name></white> created.</green>"
     failed: "<red>Failed to save warp <white><name></white>.</red>"
+  move:
+    success: "<green>Warp <white><name></white> moved to your location.</green>"
+    failed: "<red>Failed to move warp <white><name></white>.</red>"
   delete:
     success: "<green>Warp <white><name></white> deleted.</green>"
   group:
@@ -31,7 +35,12 @@ warp:
     summary: "<green>Mass-warped <white><teleported></white>/<white><total></white> player(s) to <white><name></white> (<white><skipped></white> skipped due to missing permission).</green>"
   list:
     empty: "<yellow>There are no warps yet.</yellow>"
-    header: "<gold>Warps:</gold> "
+    filter-empty: "<yellow>No warps found for group <white><name></white>.</yellow>"
+    invalid-page: "<red>Page <white><page></white> doesn't exist — there are only <white><pages></white> page(s).</red>"
+    page-header: "<gold>Warps</gold> <gray>(page <white><page></white>/<white><pages></white>)</gray>"
+    group-header: "<dark_gray>── <white><group></white> ──</dark_gray>"
+    entry: "  <gray>•</gray> <white><name></white><suffix>"
+    footer: "<gray>Tip: <white>/warp list <page></white> for more, or <white>/warp list group <name></white> to filter.</gray>"
   teleport:
     success: "<green>Teleported to <white><name></white>.</green>"
     failed: "<red>Teleportation to <white><name></white> failed. The world may not be loaded.</red>"

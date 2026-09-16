@@ -10,5 +10,5 @@ softdepend: [LuckPerms]
 
 permissions:
   metabasis.admin:
-    description: Grants access to all Metabasis admin commands (warp set/delete/group-assign, group create/delete/permission/list, spawn set).
+    description: Grants access to all Metabasis admin commands (warp create/move/delete/group-assign, group create/delete/permission/list, spawn set).
     default: op

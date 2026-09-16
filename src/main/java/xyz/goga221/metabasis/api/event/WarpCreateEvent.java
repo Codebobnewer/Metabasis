@@ -4,7 +4,7 @@ import xyz.goga221.metabasis.warp.Warp;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-/** Fired after a brand-new warp is created — not fired when an existing warp is moved via /warp set. */
+/** Fired after a brand-new warp is created — not fired when an existing warp is relocated via /warp move. */
 public final class WarpCreateEvent extends Event {
 
     private static final HandlerList HANDLERS = new HandlerList();
