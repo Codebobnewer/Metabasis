@@ -20,7 +20,6 @@
         <commandapi.version>12.0.0</commandapi.version>
         <universalscheduler.version>0.1.7</universalscheduler.version>
         <lombok.version>1.18.36</lombok.version>
-        <luckperms.version>5.4</luckperms.version>
         <hikaricp.version>5.1.0</hikaricp.version>
         <sqlite.version>3.46.1.3</sqlite.version>
         <invui.version>1.49</invui.version>
@@ -72,14 +71,6 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Queried to validate/enumerate LuckPerms groups; provided by the standalone LuckPerms plugin on the server, if installed -->
-        <dependency>
-            <groupId>net.luckperms</groupId>
-            <artifactId>api</artifactId>
-            <version>${luckperms.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -180,6 +171,8 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/versions/*/module-info.class</exclude>
                                     </excludes>
                                 </filter>
                             </filters>

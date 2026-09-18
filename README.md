@@ -66,15 +66,13 @@ Create named warp points and per-world spawns and teleport back to them — safe
 
 A warp with no group assigned is public. Once assigned to a group, only players holding that group's permission (and with both the warp and its group enabled) can warp to it. Spawns work the same way, gated by their own optional permission.
 
-### Group/spawn permissions and LuckPerms
+### Group/spawn permissions
 
 `[permission]` is optional:
 
 - **Omitted** — public; anyone can use it.
 - **`op`** — only server operators can use it. Works with or without a permissions plugin installed.
-- **The name of an existing [LuckPerms](https://luckperms.net/) group** (e.g. `vip`) — only requires LuckPerms to be installed and that group to already exist there (create/manage it with LuckPerms as usual, e.g. `/lp creategroup vip`). Metabasis checks the name against LuckPerms's actual group list and tab-completes it for you; anyone LuckPerms considers a member of that group (directly or via inheritance) can use it.
-
-Without LuckPerms installed, `op` or blank are the only accepted values — a custom permission nobody could ever be granted would otherwise silently lock a warp behind an unreachable check.
+- **Any other value** — used as a raw Bukkit permission node (e.g. `metabasis.group.vip`). Grant it to players however your permission plugin of choice works; Metabasis just checks `player.hasPermission(node)` (and always lets ops through). Tab-complete suggests `op` plus any node you've already bound to another group/spawn, so you don't have to retype one.
 
 ## GUIs
 
@@ -112,7 +110,6 @@ Every warp create/update/delete and every successful teleport is logged to a loc
 | Minecraft API | 1.21 |
 | Build tool | Maven |
 | Dependency plugin | [CommandAPI](https://www.spigotmc.org/resources/commandapi.9718/) |
-| Optional | [LuckPerms](https://luckperms.net/) (for group-name permissions) |
 
 ## Building
 
@@ -138,7 +135,7 @@ The plugin's data folder is derived from its name, so existing warp data lived i
 |---|---|---|
 | `metabasis.admin` | `op` | Grants access to all Metabasis admin commands and the admin GUI (warp/group/spawn management, mass warp, history) |
 
-Group-bound and spawn-bound permissions aren't declared here — they're either `op`, or derived from a LuckPerms group you name when creating them (see "Group/spawn permissions and LuckPerms" above).
+Group-bound and spawn-bound permissions aren't declared here — they're either `op`, or a raw permission node you choose when creating them (see "Group/spawn permissions" above).
 
 ## Project Structure
 
@@ -189,7 +186,7 @@ src/main/java/xyz/goga221/metabasis/
 │   ├── GroupData.java            # A loaded group plus its embedded warps
 │   ├── GroupRepository.java      # Storage interface
 │   ├── YamlGroupRepository.java  # One-file-per-group YAML persistence (groups/<name>.yml)
-│   └── GroupService.java         # Group CRUD logic, LuckPerms permission validation, cascading delete
+│   └── GroupService.java         # Group CRUD logic, permission resolution, cascading delete
 ├── location/
 │   ├── LocationSnapshot.java    # Shared immutable world/x/y/z/yaw/pitch value type
 │   └── YamlLocationCodec.java   # Shared YAML read/write for LocationSnapshot
@@ -198,8 +195,8 @@ src/main/java/xyz/goga221/metabasis/
     ├── MessageDefaults.java     # Built-in fallback text for missing/invalid keys
     ├── Messages.java            # MiniMessage helper
     ├── Names.java                # Shared name normalization
-    ├── PermissionResolver.java  # Shared op/blank/LuckPerms-group permission validation
-    ├── Permissions.java         # op-aware permission checks, LuckPerms group queries
+    ├── PermissionResolver.java  # Shared op/blank/raw-permission-node resolution
+    ├── Permissions.java         # op-aware permission checks
     └── SafeTeleport.java        # Shared Folia-safe teleport helper
 ```
 

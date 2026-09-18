@@ -1,18 +1,14 @@
 package xyz.goga221.metabasis.util;
 
 /**
- * Validates a raw admin-supplied permission argument and resolves it to the actual Bukkit
- * permission node to store. Shared by anything that gates access behind an admin-chosen
- * permission (groups, per-world spawns):
+ * Resolves a raw admin-supplied permission argument to the value stored on a group/spawn. Shared
+ * by anything that gates access behind an admin-chosen permission (groups, per-world spawns):
  * <ul>
- *   <li>blank — valid, resolves to {@code null} (public)</li>
- *   <li>{@link #OP_ONLY_TOKEN} (case-insensitive) — always valid, regardless of whether a
- *       permissions plugin is installed, since it just checks operator status</li>
- *   <li>anything else — valid only if it names an existing LuckPerms group, resolving to that
- *       group's {@code group.<name>} node (LuckPerms grants this to every member automatically,
- *       so the actual access check never needs the LuckPerms API). Without LuckPerms present, no
- *       other value is valid — a custom node could never be granted to anyone, which would
- *       silently lock access behind an unreachable check</li>
+ *   <li>blank — resolves to {@code null} (public)</li>
+ *   <li>{@link #OP_ONLY_TOKEN} (case-insensitive) — resolves to {@link #OP_ONLY_TOKEN}, checked
+ *       via {@link org.bukkit.permissions.Permissible#isOp()} rather than as a real node</li>
+ *   <li>anything else — used as-is as a Bukkit permission node, granted however the server's
+ *       permission plugin (or lack thereof) sees fit</li>
  * </ul>
  */
 public final class PermissionResolver {
@@ -23,36 +19,14 @@ public final class PermissionResolver {
     private PermissionResolver() {
     }
 
-    public static Resolution resolve(String rawPermission) {
+    /** The resolved value to store: {@code null} (public), {@link #OP_ONLY_TOKEN}, or the raw permission node. */
+    public static String resolve(String rawPermission) {
         if (rawPermission == null || rawPermission.isBlank()) {
-            return Resolution.ok(null);
+            return null;
         }
         if (OP_ONLY_TOKEN.equalsIgnoreCase(rawPermission)) {
-            return Resolution.ok(OP_ONLY_TOKEN);
+            return OP_ONLY_TOKEN;
         }
-        if (!Permissions.isLuckPermsPresent()) {
-            return Resolution.rejected(
-                    "No permissions plugin (e.g. LuckPerms) is installed, so a custom permission can't be granted "
-                            + "to anyone. Use '" + OP_ONLY_TOKEN + "' to restrict this to operators, or leave "
-                            + "the permission blank to make it public.");
-        }
-        if (!Permissions.isLuckPermsGroup(rawPermission)) {
-            return Resolution.rejected("No LuckPerms group named '" + rawPermission + "' exists.");
-        }
-        return Resolution.ok(Permissions.luckPermsGroupNode(rawPermission));
-    }
-
-    public record Resolution(String value, String rejectionMessage) {
-        public static Resolution ok(String value) {
-            return new Resolution(value, null);
-        }
-
-        public static Resolution rejected(String message) {
-            return new Resolution(null, message);
-        }
-
-        public boolean isRejected() {
-            return rejectionMessage != null;
-        }
+        return rawPermission;
     }
 }

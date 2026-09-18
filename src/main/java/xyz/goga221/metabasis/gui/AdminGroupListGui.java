@@ -66,7 +66,7 @@ public final class AdminGroupListGui {
         admin.closeInventory();
         TextInputDialogs.prompt(admin, "Create Group", List.of(
                 new TextInputDialogs.Field("name", "Name", ""),
-                new TextInputDialogs.Field("permission", "Permission (op / LuckPerms group / blank)", ""),
+                new TextInputDialogs.Field("permission", "Permission (op / permission node / blank)", ""),
                 new TextInputDialogs.Field("description", "Description (optional)", "")
         ), values -> {
             String name = values.get("name");

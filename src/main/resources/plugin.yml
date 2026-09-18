@@ -6,7 +6,6 @@ folia-supported: true
 author: goga221
 description: Per-world spawns, warp points, and permission-gated warp groups.
 depend: [CommandAPI]
-softdepend: [LuckPerms]
 
 permissions:
   metabasis.admin:

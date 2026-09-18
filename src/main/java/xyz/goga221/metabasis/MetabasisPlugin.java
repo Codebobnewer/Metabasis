@@ -86,9 +86,13 @@ public final class MetabasisPlugin extends JavaPlugin {
 
         GuiContext guiContext = new GuiContext(warpService, groupService, spawnService, messageService, scheduler);
 
-        new WarpCommand(warpService, groupService, historyRepository, messageService, guiContext).register(this);
-        new SpawnCommand(spawnService, messageService).register(this);
-        new GroupCommand(groupService, warpService, messageService).register(this);
+        // Command leaves are instantiated by reflection with a no-arg constructor, so they read
+        // services from this static registry instead of constructor injection.
+        Services.init(warpService, groupService, spawnService, messageService, historyRepository, guiContext);
+
+        new WarpCommand().register(this);
+        new SpawnCommand().register(this);
+        new GroupCommand().register(this);
 
         getServer().getPluginManager().registerEvents(new SpawnRespawnListener(spawnService), this);
         getServer().getPluginManager().registerEvents(new WarmupCancelListener(warpService, messageService), this);

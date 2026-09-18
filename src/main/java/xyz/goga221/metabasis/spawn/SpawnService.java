@@ -71,8 +71,8 @@ public final class SpawnService {
 
     /**
      * Rebinds (or clears) the permission required to teleport to this world's spawn, without
-     * touching its location. Fails if the world doesn't have a spawn set yet — validated the same
-     * way group permissions are (op / blank / an existing LuckPerms group).
+     * touching its location. Fails if the world doesn't have a spawn set yet — resolved the same
+     * way group permissions are (op / blank / a raw permission node).
      */
     public CompletableFuture<Void> updatePermission(String exactWorldName, String rawPermission) {
         Spawn existing = cache.get(exactWorldName);
@@ -80,12 +80,8 @@ public final class SpawnService {
             return CompletableFuture.failedFuture(new IllegalArgumentException(
                     "No spawn set for world '" + exactWorldName + "' yet — use /spawn set first."));
         }
-        PermissionResolver.Resolution resolution = PermissionResolver.resolve(rawPermission);
-        if (resolution.isRejected()) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException(resolution.rejectionMessage()));
-        }
 
-        Spawn updated = existing.withPermission(resolution.value());
+        Spawn updated = existing.withPermission(PermissionResolver.resolve(rawPermission));
         cache.put(exactWorldName, updated);
         return repository.save(updated);
     }

@@ -46,7 +46,7 @@ public final class AdminGroupDetailGui {
             click.getEvent().setCancelled(true);
             Player player = click.getPlayer();
             player.closeInventory();
-            TextInputDialogs.promptText(player, "Rebind Permission", "op / LuckPerms group / blank", group.getPermission(), permission ->
+            TextInputDialogs.promptText(player, "Rebind Permission", "op / permission node / blank", group.getPermission(), permission ->
                     context.groupService().updatePermission(group.getName(), permission)
                             .whenComplete((unused, throwable) -> context.onPlayerThread(player, () -> {
                                 if (throwable != null) {

@@ -60,12 +60,7 @@ public final class GroupService {
             return CompletableFuture.failedFuture(
                     new IllegalArgumentException("A group named '" + name + "' already exists."));
         }
-        PermissionResolver.Resolution resolution = PermissionResolver.resolve(rawPermission);
-        if (resolution.isRejected()) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException(resolution.rejectionMessage()));
-        }
-
-        Group group = new Group(name, resolution.value(), description, true);
+        Group group = new Group(name, PermissionResolver.resolve(rawPermission), description, true);
         cache.put(name, group);
         return repository.save(group);
     }
@@ -77,12 +72,7 @@ public final class GroupService {
             return CompletableFuture.failedFuture(
                     new IllegalArgumentException("No group named '" + name + "' exists."));
         }
-        PermissionResolver.Resolution resolution = PermissionResolver.resolve(rawPermission);
-        if (resolution.isRejected()) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException(resolution.rejectionMessage()));
-        }
-
-        Group updated = existing.withPermission(resolution.value());
+        Group updated = existing.withPermission(PermissionResolver.resolve(rawPermission));
         cache.put(name, updated);
         return repository.save(updated);
     }
