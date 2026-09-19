@@ -1,6 +1,9 @@
 package xyz.goga221.metabasis.command;
 
 import xyz.goga221.metabasis.Services;
+import xyz.goga221.metabasis.command.warp.GuiCommand;
+import xyz.goga221.metabasis.command.warp.ListCommand;
+import xyz.goga221.metabasis.command.warp.ListGroupCommand;
 import xyz.goga221.metabasis.command.warp.WarpCommandSupport;
 import xyz.goga221.metabasis.util.Messages;
 import xyz.goga221.metabasis.warp.Warp;
@@ -13,10 +16,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Optional;
 
-/** Assembles {@code /warp}: teleport-by-name is the root's own behavior, every other branch is a leaf command found in {@code command.warp}. */
+/**
+ * Assembles {@code /warp}: teleport-by-name is the root's own behavior, {@code list}/{@code gui} are
+ * the only leaf commands here. Admin-only actions (create, del, massport, ...) live under
+ * {@link WarpAdminCommand} instead, so this command's tab-complete only ever shows warp names and
+ * player-facing subcommands.
+ */
 public final class WarpCommand {
-
-    private static final String LEAF_PACKAGE = "xyz.goga221.metabasis.command.warp";
 
     public void register(JavaPlugin plugin) {
         new CommandAPICommand("warp")
@@ -25,7 +31,10 @@ public final class WarpCommand {
                     String name = (String) args.getUnchecked("name");
                     handleTeleport(player, name);
                 })
-                .withSubcommands(CommandGroupScanner.scan(LEAF_PACKAGE).toArray(new CommandAPICommand[0]))
+                .withSubcommands(
+                        new GuiCommand().getCommand(),
+                        new ListCommand().getCommand(),
+                        new ListGroupCommand().getCommand())
                 .register(plugin);
     }
 

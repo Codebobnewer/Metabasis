@@ -4,6 +4,7 @@ import xyz.goga221.metabasis.api.MetabasisAPI;
 import xyz.goga221.metabasis.api.MetabasisAPIImpl;
 import xyz.goga221.metabasis.command.GroupCommand;
 import xyz.goga221.metabasis.command.SpawnCommand;
+import xyz.goga221.metabasis.command.WarpAdminCommand;
 import xyz.goga221.metabasis.command.WarpCommand;
 import xyz.goga221.metabasis.group.GroupRepository;
 import xyz.goga221.metabasis.group.GroupService;
@@ -91,6 +92,7 @@ public final class MetabasisPlugin extends JavaPlugin {
         Services.init(warpService, groupService, spawnService, messageService, historyRepository, guiContext);
 
         new WarpCommand().register(this);
+        new WarpAdminCommand().register(this);
         new SpawnCommand().register(this);
         new GroupCommand().register(this);
 

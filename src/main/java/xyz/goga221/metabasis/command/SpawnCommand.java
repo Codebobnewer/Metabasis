@@ -1,6 +1,8 @@
 package xyz.goga221.metabasis.command;
 
 import xyz.goga221.metabasis.Services;
+import xyz.goga221.metabasis.command.spawn.PermissionCommand;
+import xyz.goga221.metabasis.command.spawn.SetCommand;
 import xyz.goga221.metabasis.command.spawn.SpawnCommandSupport;
 import xyz.goga221.metabasis.util.Messages;
 import dev.jorel.commandapi.CommandAPICommand;
@@ -9,10 +11,8 @@ import dev.jorel.commandapi.arguments.StringArgument;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-/** Assembles {@code /spawn}: teleport-to-world is the root's own behavior, every other branch is a leaf command found in {@code command.spawn}. */
+/** Assembles {@code /spawn}: teleport-to-world is the root's own behavior, every other branch is a leaf command in {@code command.spawn}. */
 public final class SpawnCommand {
-
-    private static final String LEAF_PACKAGE = "xyz.goga221.metabasis.command.spawn";
 
     public void register(JavaPlugin plugin) {
         new CommandAPICommand("spawn")
@@ -21,7 +21,9 @@ public final class SpawnCommand {
                     String world = (String) args.getOptional("world").orElse(player.getWorld().getName());
                     handleTeleport(player, world);
                 })
-                .withSubcommands(CommandGroupScanner.scan(LEAF_PACKAGE).toArray(new CommandAPICommand[0]))
+                .withSubcommands(
+                        new SetCommand().getCommand(),
+                        new PermissionCommand().getCommand())
                 .register(plugin);
     }
 
