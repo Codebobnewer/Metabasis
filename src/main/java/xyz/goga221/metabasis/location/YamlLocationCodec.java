@@ -17,8 +17,12 @@ public final class YamlLocationCodec {
     }
 
     public static LocationSnapshot read(ConfigurationSection section) {
+        String world = section.getString("world");
+        if (world == null || world.isBlank()) {
+            throw new IllegalStateException("Missing 'world' at '" + section.getCurrentPath() + "'");
+        }
         return new LocationSnapshot(
-                section.getString("world"),
+                world,
                 section.getDouble("x"),
                 section.getDouble("y"),
                 section.getDouble("z"),

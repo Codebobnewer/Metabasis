@@ -105,11 +105,20 @@ public final class GroupService {
 
     public CompletableFuture<Boolean> deleteGroup(String rawName) {
         String name = normalize(rawName);
-        Group removed = cache.remove(name);
-        if (removed != null) {
-            Bukkit.getPluginManager().callEvent(new GroupDeleteEvent(removed));
+        if (!cache.containsKey(name)) {
+            return CompletableFuture.completedFuture(false);
         }
-        return repository.delete(name);
+        // Cache/event only change once the file delete confirms, so a failed disk delete can't
+        // leave the group (and its cascaded warps) gone from memory while its file still exists.
+        return repository.delete(name).thenApply(deleted -> {
+            if (deleted) {
+                Group removed = cache.remove(name);
+                if (removed != null) {
+                    Bukkit.getPluginManager().callEvent(new GroupDeleteEvent(removed));
+                }
+            }
+            return deleted;
+        });
     }
 
     /** Adds or updates one warp's entry inside the given group's file. */

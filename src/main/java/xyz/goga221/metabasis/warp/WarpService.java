@@ -171,13 +171,20 @@ public final class WarpService {
 
     public void deleteWarp(String rawName, Consumer<Boolean> callback) {
         String name = normalize(rawName);
-        Warp removed = cache.remove(name);
-        if (removed == null) {
+        Warp existing = cache.get(name);
+        if (existing == null) {
             callback.accept(false);
             return;
         }
-        Bukkit.getPluginManager().callEvent(new WarpDeleteEvent(removed));
-        removeFromStorage(removed, callback);
+        // Cache/event only change once storage confirms the delete, so a failed disk write can't
+        // leave the warp gone from gameplay while its file entry still exists on disk.
+        removeFromStorage(existing, removed -> {
+            if (removed) {
+                cache.remove(name);
+                Bukkit.getPluginManager().callEvent(new WarpDeleteEvent(existing));
+            }
+            callback.accept(removed);
+        });
     }
 
     /** Moves a warp's data between warps.yml and its (old/new) group's file, as needed. */
@@ -252,12 +259,18 @@ public final class WarpService {
         AtomicInteger remaining = new AtomicInteger(affected.size());
         for (Warp warp : affected) {
             Warp updated = warp.withGroupName(null);
-            cache.put(updated.getName(), updated);
-            repository.save(updated, saved -> {
-                if (remaining.decrementAndGet() == 0) {
-                    onComplete.run();
-                }
-            });
+            // Remove the stale entry from the group's own file first, then write the new ungrouped
+            // entry to warps.yml, and only update the cache once both succeed — otherwise a
+            // leftover GroupedWarp entry silently re-attaches the warp to this group on next load.
+            groupService.removeWarpFromGroup(name, warp.getName(), removedFromGroup ->
+                    repository.save(updated, saved -> {
+                        if (saved) {
+                            cache.put(updated.getName(), updated);
+                        }
+                        if (remaining.decrementAndGet() == 0) {
+                            onComplete.run();
+                        }
+                    }));
         }
     }
 

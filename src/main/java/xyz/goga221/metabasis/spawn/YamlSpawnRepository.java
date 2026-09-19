@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class YamlSpawnRepository implements SpawnRepository {
 
@@ -18,6 +20,7 @@ public final class YamlSpawnRepository implements SpawnRepository {
 
     private final File spawnsFile;
     private final TaskScheduler scheduler;
+    private final Logger logger;
     private final Object lock = new Object();
 
     /**
@@ -27,12 +30,13 @@ public final class YamlSpawnRepository implements SpawnRepository {
      */
     private YamlConfiguration config;
 
-    public YamlSpawnRepository(File dataFolder, TaskScheduler scheduler) {
+    public YamlSpawnRepository(File dataFolder, TaskScheduler scheduler, Logger logger) {
         if (!dataFolder.exists() && !dataFolder.mkdirs()) {
             throw new IllegalStateException("Could not create plugin data folder: " + dataFolder);
         }
         this.spawnsFile = new File(dataFolder, "spawns.yml");
         this.scheduler = scheduler;
+        this.logger = logger;
     }
 
     @Override
@@ -61,13 +65,17 @@ public final class YamlSpawnRepository implements SpawnRepository {
                     if (spawnSection == null) {
                         continue;
                     }
-                    spawns.add(new Spawn(
-                            worldName,
-                            YamlLocationCodec.read(spawnSection),
-                            UUID.fromString(spawnSection.getString("set-by")),
-                            spawnSection.getLong("updated-at"),
-                            spawnSection.getString("permission")
-                    ));
+                    try {
+                        spawns.add(new Spawn(
+                                worldName,
+                                YamlLocationCodec.read(spawnSection),
+                                UUID.fromString(spawnSection.getString("set-by")),
+                                spawnSection.getLong("updated-at"),
+                                spawnSection.getString("permission")
+                        ));
+                    } catch (RuntimeException e) {
+                        logger.log(Level.WARNING, "Skipping corrupt spawn entry for world '" + worldName + "' in spawns.yml", e);
+                    }
                 }
             }
             return spawns;
@@ -89,6 +97,7 @@ public final class YamlSpawnRepository implements SpawnRepository {
                 try {
                     future.complete(action.run());
                 } catch (IOException e) {
+                    logger.log(Level.SEVERE, "spawns.yml read/write failed", e);
                     future.completeExceptionally(e);
                 }
             }

@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Stores each group as its own file under {@code groups/<name>.yml}, holding the group's
@@ -27,6 +29,7 @@ public final class YamlGroupRepository implements GroupRepository {
 
     private final File groupsDirectory;
     private final TaskScheduler scheduler;
+    private final Logger logger;
     private final Object lock = new Object();
 
     /**
@@ -37,12 +40,13 @@ public final class YamlGroupRepository implements GroupRepository {
      */
     private final Map<String, YamlConfiguration> configs = new HashMap<>();
 
-    public YamlGroupRepository(File dataFolder, TaskScheduler scheduler) {
+    public YamlGroupRepository(File dataFolder, TaskScheduler scheduler, Logger logger) {
         this.groupsDirectory = new File(dataFolder, "groups");
         if (!groupsDirectory.exists() && !groupsDirectory.mkdirs()) {
             throw new IllegalStateException("Could not create groups folder: " + groupsDirectory);
         }
         this.scheduler = scheduler;
+        this.logger = logger;
     }
 
     @Override
@@ -131,17 +135,21 @@ public final class YamlGroupRepository implements GroupRepository {
                 if (warpSection == null) {
                     continue;
                 }
-                warps.add(new GroupedWarp(
-                        warpName,
-                        YamlLocationCodec.read(warpSection),
-                        UUID.fromString(warpSection.getString("creator")),
-                        warpSection.getLong("created-at"),
-                        warpSection.getBoolean("enabled", true),
-                        warpSection.getInt("fade-in-ticks", 0),
-                        warpSection.getInt("stay-ticks", 0),
-                        warpSection.getInt("fade-out-ticks", 0),
-                        warpSection.getInt("warmup-seconds", 0)
-                ));
+                try {
+                    warps.add(new GroupedWarp(
+                            warpName,
+                            YamlLocationCodec.read(warpSection),
+                            UUID.fromString(warpSection.getString("creator")),
+                            warpSection.getLong("created-at"),
+                            warpSection.getBoolean("enabled", true),
+                            warpSection.getInt("fade-in-ticks", 0),
+                            warpSection.getInt("stay-ticks", 0),
+                            warpSection.getInt("fade-out-ticks", 0),
+                            warpSection.getInt("warmup-seconds", 0)
+                    ));
+                } catch (RuntimeException e) {
+                    logger.log(Level.WARNING, "Skipping corrupt warp entry '" + warpName + "' in group '" + name + "'", e);
+                }
             }
         }
         return new GroupData(group, warps);
@@ -172,6 +180,7 @@ public final class YamlGroupRepository implements GroupRepository {
                 try {
                     onDone.accept(action.run());
                 } catch (IOException e) {
+                    logger.log(Level.SEVERE, "Group file read/write failed", e);
                     onError.accept(e);
                 }
             }

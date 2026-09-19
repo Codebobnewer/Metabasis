@@ -46,10 +46,10 @@ public final class MetabasisPlugin extends JavaPlugin {
 
         this.scheduler = UniversalScheduler.getScheduler(this);
 
-        GroupRepository groupRepository = new YamlGroupRepository(getDataFolder(), scheduler);
+        GroupRepository groupRepository = new YamlGroupRepository(getDataFolder(), scheduler, getLogger());
         this.groupService = new GroupService(groupRepository);
 
-        WarpRepository warpRepository = new YamlWarpRepository(getDataFolder(), scheduler);
+        WarpRepository warpRepository = new YamlWarpRepository(getDataFolder(), scheduler, getLogger());
         this.warpService = new WarpService(warpRepository, groupService, scheduler, messageService);
 
         this.historyRepository = new SqliteWarpHistoryRepository(getDataFolder(), scheduler);
@@ -75,7 +75,7 @@ public final class MetabasisPlugin extends JavaPlugin {
                     warpThrowable -> getLogger().log(Level.SEVERE, "Failed to load warps from warps.yml", warpThrowable));
         });
 
-        SpawnRepository spawnRepository = new YamlSpawnRepository(getDataFolder(), scheduler);
+        SpawnRepository spawnRepository = new YamlSpawnRepository(getDataFolder(), scheduler, getLogger());
         this.spawnService = new SpawnService(spawnRepository, scheduler);
         spawnService.loadAllIntoCache().whenComplete((unused, throwable) -> {
             if (throwable != null) {

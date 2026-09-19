@@ -9,14 +9,29 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import xyz.xenondevs.invui.gui.Gui;
+import xyz.xenondevs.invui.gui.PagedGui;
+import xyz.xenondevs.invui.item.Item;
+import xyz.xenondevs.invui.item.ItemProvider;
 import xyz.xenondevs.invui.item.impl.SimpleItem;
+import xyz.xenondevs.invui.item.impl.controlitem.PageItem;
 import xyz.xenondevs.invui.window.Window;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 /** One warp's admin screen: enable/disable, group assignment, location adjustment, delete. */
 public final class AdminWarpDetailGui {
+
+    private static final int GROUP_PICKER_WIDTH = 9;
+    private static final int GROUP_PICKER_HEIGHT = 6;
+    private static final int GROUP_PICKER_CONTROL_ROW = GROUP_PICKER_WIDTH * (GROUP_PICKER_HEIGHT - 1);
+    private static final int[] GROUP_PICKER_CONTENT_SLOTS = IntStream.range(0, GROUP_PICKER_CONTROL_ROW).toArray();
+    private static final int GROUP_PICKER_BACK_SLOT = GROUP_PICKER_CONTROL_ROW;
+    private static final int GROUP_PICKER_PREV_SLOT = GROUP_PICKER_CONTROL_ROW + 3;
+    private static final int GROUP_PICKER_NEXT_SLOT = GROUP_PICKER_CONTROL_ROW + 5;
 
     private final GuiContext context;
 
@@ -116,26 +131,44 @@ public final class AdminWarpDetailGui {
     }
 
     private void openGroupPicker(Player admin, Warp warp) {
-        var groups = context.groupService().getAll().stream().sorted(Comparator.comparing(Group::getName)).toList();
-        int rows = Math.max(1, (groups.size() + 1 + 8) / 9);
-        Gui gui = Gui.empty(9, rows);
-
-        gui.setItem(0, new SimpleItem(GuiItems.of(Material.BARRIER, Component.text("None (public)", NamedTextColor.GRAY)), click -> {
+        List<Item> items = new ArrayList<>();
+        items.add(new SimpleItem(GuiItems.of(Material.BARRIER, Component.text("None (public)", NamedTextColor.GRAY)), click -> {
             click.getEvent().setCancelled(true);
             Player player = click.getPlayer();
             context.warpService().setWarpGroup(warp.getName(), null, saved ->
                     context.onPlayerThread(player, () -> open(player, warp.getName())));
         }));
+        context.groupService().getAll().stream()
+                .sorted(Comparator.comparing(Group::getName))
+                .forEach(group -> items.add(new SimpleItem(GuiItems.of(Material.PAPER, Component.text(group.getName(), NamedTextColor.GOLD)), click -> {
+                    click.getEvent().setCancelled(true);
+                    Player player = click.getPlayer();
+                    context.warpService().setWarpGroup(warp.getName(), group.getName(), saved ->
+                            context.onPlayerThread(player, () -> open(player, warp.getName())));
+                })));
 
-        int slot = 1;
-        for (Group group : groups) {
-            gui.setItem(slot++, new SimpleItem(GuiItems.of(Material.PAPER, Component.text(group.getName(), NamedTextColor.GOLD)), click -> {
-                click.getEvent().setCancelled(true);
-                Player player = click.getPlayer();
-                context.warpService().setWarpGroup(warp.getName(), group.getName(), saved ->
-                        context.onPlayerThread(player, () -> open(player, warp.getName())));
-            }));
-        }
+        PagedGui<Item> gui = PagedGui.ofItems(GROUP_PICKER_WIDTH, GROUP_PICKER_HEIGHT, items, GROUP_PICKER_CONTENT_SLOTS);
+
+        gui.setItem(GROUP_PICKER_BACK_SLOT, new SimpleItem(GuiItems.of(Material.ARROW, Component.text("Back", NamedTextColor.GRAY)), click -> {
+            click.getEvent().setCancelled(true);
+            open(click.getPlayer(), warp.getName());
+        }));
+
+        gui.setItem(GROUP_PICKER_PREV_SLOT, new PageItem(false) {
+            @Override
+            public ItemProvider getItemProvider(PagedGui<?> pagedGui) {
+                return GuiItems.of(Material.ARROW, Component.text(
+                        pagedGui.hasPreviousPage() ? "Previous Page" : "No Previous Page", NamedTextColor.GRAY));
+            }
+        });
+
+        gui.setItem(GROUP_PICKER_NEXT_SLOT, new PageItem(true) {
+            @Override
+            public ItemProvider getItemProvider(PagedGui<?> pagedGui) {
+                return GuiItems.of(Material.ARROW, Component.text(
+                        pagedGui.hasNextPage() ? "Next Page" : "No Next Page", NamedTextColor.GRAY));
+            }
+        });
 
         Window window = Window.single(builder -> builder
                 .setViewer(admin)

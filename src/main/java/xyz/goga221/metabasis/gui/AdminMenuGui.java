@@ -8,7 +8,7 @@ import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.item.impl.SimpleItem;
 import xyz.xenondevs.invui.window.Window;
 
-/** The admin GUI's landing screen (`/warp admin`) — entry points into warp and group management. */
+/** The admin GUI's landing screen (`/warpadmin`) — entry points into warp and group management. */
 public final class AdminMenuGui {
 
     private final GuiContext context;

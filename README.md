@@ -27,22 +27,29 @@ Create named warp points and per-world spawns and teleport back to them — safe
 
 ### Warps
 
+Player-facing warp commands live under `/warp`; every admin-only warp action lives under a separate `/warpadmin` so `/warp`'s tab-complete only ever offers warp names and player-facing subcommands, never mixed with admin literals.
+
 | Command | Permission | Description |
 |---|---|---|
 | `/warp <name>` | — (or the warp's group permission) | Teleport to a warp |
 | `/warp list [page]` | — | List all warps, sorted by group then name, 8 per page |
 | `/warp list group <group\|public> [page]` | — | List only warps in a specific group (or ungrouped, via `public`) |
 | `/warp gui` | — | Open the player warp browser GUI (paginated, searchable by warp or group name, shows only warps you can access) |
-| `/warp create <name>` | `metabasis.admin` | Create a brand-new warp at your location; refuses if the name is already taken |
-| `/warp move <name>` | `metabasis.admin` | Relocate an existing warp to your current location; refuses if the name doesn't exist |
-| `/warp del <name>` | `metabasis.admin` | Delete a warp |
-| `/warp group <name> <group\|none>` | `metabasis.admin` | Assign a warp to a group, or `none` to make it public |
-| `/warp enable <name>` / `/warp disable <name>` | `metabasis.admin` | Temporarily allow/refuse teleports to a warp |
-| `/warp fade <name> <fadeIn> <stay> <fadeOut>` | `metabasis.admin` | Set the title fade timing (in ticks) shown on teleport; all `0` disables it |
-| `/warp warmup <name> <seconds>` | `metabasis.admin` | Set a delay before teleport fires (`0` = instant); cancelled by moving or taking damage |
-| `/warp massport <name> [override]` | `metabasis.admin` | Teleport every online player to a warp; `override` bypasses each player's permission check |
-| `/warp history <name> [count]` | `metabasis.admin` | Show the warp's recent create/update/delete/teleport history (default 10, max 50) |
-| `/warp admin` | `metabasis.admin` | Open the admin GUI (manage warps, groups, and spawns) |
+
+### Warp Admin
+
+| Command | Permission | Description |
+|---|---|---|
+| `/warpadmin` | `metabasis.admin` | Open the admin GUI (manage warps, groups, and spawns) |
+| `/warpadmin create <name>` | `metabasis.admin` | Create a brand-new warp at your location; refuses if the name is already taken |
+| `/warpadmin move <name>` | `metabasis.admin` | Relocate an existing warp to your current location; refuses if the name doesn't exist |
+| `/warpadmin del <name>` | `metabasis.admin` | Delete a warp |
+| `/warpadmin group <name> <group\|none>` | `metabasis.admin` | Assign a warp to a group, or `none` to make it public |
+| `/warpadmin enable <name>` / `/warpadmin disable <name>` | `metabasis.admin` | Temporarily allow/refuse teleports to a warp |
+| `/warpadmin fade <name> <fadeIn> <stay> <fadeOut>` | `metabasis.admin` | Set the title fade timing (in ticks) shown on teleport; all `0` disables it |
+| `/warpadmin warmup <name> <seconds>` | `metabasis.admin` | Set a delay before teleport fires (`0` = instant); cancelled by moving or taking damage |
+| `/warpadmin massport <name> [override]` | `metabasis.admin` | Teleport every online player to a warp; `override` bypasses each player's permission check |
+| `/warpadmin history <name> [count]` | `metabasis.admin` | Show the warp's recent create/update/delete/teleport history (default 10, max 50) |
 
 ### Groups
 
@@ -77,8 +84,8 @@ A warp with no group assigned is public. Once assigned to a group, only players 
 ## GUIs
 
 - **`/warp gui`** — every player can browse the warps they currently have access to, sorted by group and paginated, with a "Search" button (Dialog-driven, matches what you type against either a warp's name or its group name — or type `public` for ungrouped warps), click to teleport.
-- **`/warp admin`** (requires `metabasis.admin`) — a menu into three InvUI-driven management screens:
-  - **Manage Warps** — same paginated, searchable list as the player GUI (now covering every warp, not just accessible ones), click a warp for its detail screen: enable/disable, assign a group, adjust location (per-axis nudge buttons, plus a teleport-preview), delete (with confirmation).
+- **`/warpadmin`** (requires `metabasis.admin`) — a menu into three InvUI-driven management screens, all paginated:
+  - **Manage Warps** — same paginated, searchable list as the player GUI (now covering every warp, not just accessible ones), click a warp for its detail screen: enable/disable, assign a group (its own paginated picker), adjust location (per-axis nudge buttons, plus a teleport-preview), delete (with confirmation).
   - **Manage Groups** — create (via a Dialog prompting for name/permission/description), enable/disable, rebind permission, edit description, delete (with confirmation — cascades to the group's warps).
   - **Manage Spawns** — pick a world with a custom spawn and adjust its location the same way.
 - Text input (permissions, descriptions) uses Paper's server-side Dialog API rather than chat prompts.
@@ -99,7 +106,7 @@ All user-facing text is defined in `plugins/Metabasis/message.yml` (extracted fr
 
 ## History
 
-Every warp create/update/delete and every successful teleport is logged to a local SQLite database (`plugins/Metabasis/history.db`, via HikariCP). `/warp history <name>` shows the most recent entries for a warp, including who did what and when.
+Every warp create/update/delete and every successful teleport is logged to a local SQLite database (`plugins/Metabasis/history.db`, via HikariCP). `/warpadmin history <name>` shows the most recent entries for a warp, including who did what and when.
 
 ## Requirements
 
@@ -133,7 +140,7 @@ The plugin's data folder is derived from its name, so existing warp data lived i
 
 | Permission | Default | Description |
 |---|---|---|
-| `metabasis.admin` | `op` | Grants access to all Metabasis admin commands and the admin GUI (warp/group/spawn management, mass warp, history) |
+| `metabasis.admin` | `op` | Grants access to `/warpadmin`, `/group`'s admin subcommands, `/spawn set`/`/spawn permission`, and the admin GUI (warp/group/spawn management, mass warp, history) |
 
 Group-bound and spawn-bound permissions aren't declared here — they're either `op`, or a raw permission node you choose when creating them (see "Group/spawn permissions" above).
 
@@ -142,16 +149,22 @@ Group-bound and spawn-bound permissions aren't declared here — they're either 
 ```
 src/main/java/xyz/goga221/metabasis/
 ├── MetabasisPlugin.java        # Plugin entry point
+├── Services.java                # Static service accessor for leaf commands (see command/ below)
 ├── api/
 │   ├── MetabasisAPI.java        # Public API interface
 │   ├── MetabasisAPIImpl.java    # API implementation, registered via ServicesManager
 │   └── event/                   # Custom Bukkit events (create/update/delete/teleport/group-delete)
 ├── command/
-│   ├── WarpCommand.java         # /warp command tree
-│   ├── SpawnCommand.java        # /spawn command tree
-│   └── GroupCommand.java        # /group command tree
+│   ├── BaseCommand.java         # Shared shape for every leaf subcommand (CommandAPICommand register())
+│   ├── WarpCommand.java         # /warp: teleport-by-name + list/gui leaves (player-facing only)
+│   ├── WarpAdminCommand.java    # /warpadmin: bare opens the admin GUI + every admin warp action
+│   ├── SpawnCommand.java        # /spawn: teleport-by-world + set/permission leaves
+│   ├── GroupCommand.java        # /group: assembles every leaf in command/group/
+│   ├── warp/                    # One class per /warp and /warpadmin leaf (CreateCommand, ListCommand, ...)
+│   ├── group/                   # One class per /group leaf
+│   └── spawn/                   # One class per /spawn leaf
 ├── gui/
-│   ├── AdminMenuGui.java        # /warp admin landing screen
+│   ├── AdminMenuGui.java        # /warpadmin landing screen
 │   ├── AdminWarpListGui.java / AdminWarpDetailGui.java   # Warp management
 │   ├── AdminGroupListGui.java / AdminGroupDetailGui.java # Group management
 │   ├── AdminSpawnListGui.java   # Spawn management

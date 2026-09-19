@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class YamlWarpRepository implements WarpRepository {
 
@@ -18,6 +20,7 @@ public final class YamlWarpRepository implements WarpRepository {
 
     private final File warpsFile;
     private final TaskScheduler scheduler;
+    private final Logger logger;
     private final Object lock = new Object();
 
     /**
@@ -27,12 +30,13 @@ public final class YamlWarpRepository implements WarpRepository {
      */
     private YamlConfiguration config;
 
-    public YamlWarpRepository(File dataFolder, TaskScheduler scheduler) {
+    public YamlWarpRepository(File dataFolder, TaskScheduler scheduler, Logger logger) {
         if (!dataFolder.exists() && !dataFolder.mkdirs()) {
             throw new IllegalStateException("Could not create plugin data folder: " + dataFolder);
         }
         this.warpsFile = new File(dataFolder, "warps.yml");
         this.scheduler = scheduler;
+        this.logger = logger;
     }
 
     @Override
@@ -82,18 +86,22 @@ public final class YamlWarpRepository implements WarpRepository {
                     if (warpSection == null) {
                         continue;
                     }
-                    warps.add(new Warp(
-                            name,
-                            YamlLocationCodec.read(warpSection),
-                            UUID.fromString(warpSection.getString("creator")),
-                            warpSection.getLong("created-at"),
-                            warpSection.getString("group"),
-                            warpSection.getBoolean("enabled", true),
-                            warpSection.getInt("fade-in-ticks", 0),
-                            warpSection.getInt("stay-ticks", 0),
-                            warpSection.getInt("fade-out-ticks", 0),
-                            warpSection.getInt("warmup-seconds", 0)
-                    ));
+                    try {
+                        warps.add(new Warp(
+                                name,
+                                YamlLocationCodec.read(warpSection),
+                                UUID.fromString(warpSection.getString("creator")),
+                                warpSection.getLong("created-at"),
+                                warpSection.getString("group"),
+                                warpSection.getBoolean("enabled", true),
+                                warpSection.getInt("fade-in-ticks", 0),
+                                warpSection.getInt("stay-ticks", 0),
+                                warpSection.getInt("fade-out-ticks", 0),
+                                warpSection.getInt("warmup-seconds", 0)
+                        ));
+                    } catch (RuntimeException e) {
+                        logger.log(Level.WARNING, "Skipping corrupt warp entry '" + name + "' in warps.yml", e);
+                    }
                 }
             }
             return warps;
@@ -115,6 +123,7 @@ public final class YamlWarpRepository implements WarpRepository {
                 try {
                     onDone.accept(action.run());
                 } catch (IOException e) {
+                    logger.log(Level.SEVERE, "warps.yml read/write failed", e);
                     onError.accept(e);
                 }
             }

@@ -26,13 +26,16 @@ public final class DeleteCommand extends BaseCommand {
 
     private void handle(Player player, String rawName) {
         String name = GroupService.normalize(rawName);
-        Services.getWarpService().deleteWarpsInGroup(name, () ->
-                Services.getGroupService().deleteGroup(name).thenAccept(existed -> {
-                    if (existed) {
-                        Services.getMessageService().send(player, "group.delete.success", Messages.name(name));
-                    } else {
-                        Services.getMessageService().send(player, "group.not-found", Messages.name(name));
-                    }
-                }));
+        // Delete the group's file first, and only cascade-evict its warps from the cache once that's
+        // confirmed — otherwise a failed file delete would leave the warps evicted from gameplay
+        // while their data (still inside the undeleted group file) says they should still exist.
+        Services.getGroupService().deleteGroup(name).thenAccept(existed -> {
+            if (existed) {
+                Services.getWarpService().deleteWarpsInGroup(name, () ->
+                        Services.getMessageService().send(player, "group.delete.success", Messages.name(name)));
+            } else {
+                Services.getMessageService().send(player, "group.not-found", Messages.name(name));
+            }
+        });
     }
 }
